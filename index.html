@@ -87,7 +87,7 @@
             <!-- Anonymous Chat -->
             <section class="bg-white p-6 rounded-2xl shadow-sm">
                 <h2 class="text-2xl font-bold mb-6 text-center">Anonymous Session Chat</h2>
-                <p class="text-center text-gray-600 mb-4">Your messages stay local to your browser session. Download &amp; share the chat manually.</p>
+                <p class="text-center text-gray-600 mb-4">Your messages stay local. Download &amp; share manually — or open this in another tab to see them live!</p>
                 <div id="current-user-id" class="mb-4 text-sm text-center text-gray-500"></div>
 
                 <div id="chatMessages" class="chat-messages mb-4 rounded-lg" role="log"></div>
@@ -118,12 +118,28 @@
             localStorage.setItem('userId', userId);
             document.getElementById('current-user-id').textContent = `Your ID: ${userId}`;
 
-            // Load saved messages
             chatMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
             renderMessages();
 
             setupFeedbackForm();
             setupChat();
+
+            // Listen for updates across tabs
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'chatMessages') {
+                    chatMessages = JSON.parse(e.newValue || '[]');
+                    renderMessages();
+                }
+            });
+
+            // Optional periodic polling
+            setInterval(() => {
+                const saved = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+                if (JSON.stringify(saved) !== JSON.stringify(chatMessages)) {
+                    chatMessages = saved;
+                    renderMessages();
+                }
+            }, 2000);
         });
 
         function setupFeedbackForm() {
@@ -137,8 +153,8 @@
                 const teacherName = document.getElementById('teacherName').value;
                 const feedbackText = document.getElementById('feedbackText').value;
 
-                // Simulate submit
                 console.log('Feedback submitted:', { studentName, subject, teacherName, feedbackText, timestamp: new Date(), userId });
+
                 feedbackForm.reset();
                 feedbackMessageDiv.textContent = 'Feedback submitted successfully!';
                 feedbackMessageDiv.classList.remove('hidden');
@@ -222,18 +238,18 @@
             }
             chatMessages.forEach((data) => {
                 const messageElement = document.createElement('div');
-                // messageElement.classList.add('mb-2', 'p-3', 'rounded-lg', 'break-words', data.userId === userId ? 'bg-blue-100', 'ml-auto', 'text-right' : 'bg-gray-100');
                 messageElement.classList.add(
-                  'mb-2',
-                  'p-3',
-                  'rounded-lg',
-                  'break-words',
-                  data.userId === userId ? 'bg-blue-100' : 'bg-gray-100'
+                    'mb-2',
+                    'p-3',
+                    'rounded-lg',
+                    'break-words',
+                    data.userId === userId ? 'bg-blue-100' : 'bg-gray-100'
                 );
-                
+
                 if (data.userId === userId) {
-                  messageElement.classList.add('ml-auto', 'text-right');
+                    messageElement.classList.add('ml-auto', 'text-right');
                 }
+
                 const header = document.createElement('p');
                 header.classList.add('font-semibold', data.userId === userId ? 'text-blue-800' : 'text-gray-800');
                 header.textContent = data.userId === userId ? 'You (Anonymous):' : `Anonymous (${data.userId}):`;
