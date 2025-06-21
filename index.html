@@ -222,8 +222,18 @@
             }
             chatMessages.forEach((data) => {
                 const messageElement = document.createElement('div');
-                messageElement.classList.add('mb-2', 'p-3', 'rounded-lg', 'break-words', data.userId === userId ? 'bg-blue-100', 'ml-auto', 'text-right' : 'bg-gray-100');
-
+                // messageElement.classList.add('mb-2', 'p-3', 'rounded-lg', 'break-words', data.userId === userId ? 'bg-blue-100', 'ml-auto', 'text-right' : 'bg-gray-100');
+                messageElement.classList.add(
+                  'mb-2',
+                  'p-3',
+                  'rounded-lg',
+                  'break-words',
+                  data.userId === userId ? 'bg-blue-100' : 'bg-gray-100'
+                );
+                
+                if (data.userId === userId) {
+                  messageElement.classList.add('ml-auto', 'text-right');
+                }
                 const header = document.createElement('p');
                 header.classList.add('font-semibold', data.userId === userId ? 'text-blue-800' : 'text-gray-800');
                 header.textContent = data.userId === userId ? 'You (Anonymous):' : `Anonymous (${data.userId}):`;
