@@ -3,197 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Feedback & Teacher Chat</title>
+    <title>Simple Anonymous Chat with File Share</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-        let app;
-        let db;
-        let auth;
-        let userId = 'loading...';
-        let isAuthReady = false; // Flag to indicate authentication readiness
-
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Ensure firebaseConfig is always provided, even with placeholder values if __firebase_config is missing
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && Object.keys(JSON.parse(__firebase_config)).length > 0
-            ? JSON.parse(__firebase_config)
-            : {
-                apiKey: "YOUR_API_KEY", // Replace with an actual API Key if you deploy outside Canvas
-                authDomain: `${appId}.firebaseapp.com`,
-                projectId: appId, // Use appId as projectId fallback
-                storageBucket: `${appId}.appspot.com`,
-                messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with actual ID
-                appId: "YOUR_APP_ID" // Replace with actual App ID
-            };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const chatMessagesCollection = (uid) => collection(db, `/artifacts/${appId}/public/data/chat_messages`);
-        const feedbackCollection = (uid) => collection(db, `/artifacts/${appId}/public/data/feedback`);
+    <script>
+        let userId; // Will be a randomly generated ID for anonymous use
+        let chatMessages = []; // Local storage for chat messages
 
         document.addEventListener('DOMContentLoaded', async () => {
-            console.log("DOM Content Loaded. Initializing Firebase...");
-            console.log("Firebase Config:", firebaseConfig);
+            userId = 'anon_' + Math.random().toString(36).substring(2, 10);
+            document.getElementById('current-user-id').textContent = `Your Anonymous ID: ${userId.substring(0, 8)}...`;
+            console.log("Anonymous User ID generated for this session:", userId);
 
-            try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                console.log("Firebase App and Services initialized.");
+            const feedbackForm = document.getElementById('feedbackForm');
+            const feedbackMessageDiv = document.getElementById('feedbackMessage');
+            feedbackForm.addEventListener('submit', (e) => {
+                e.preventDefault();
 
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('current-user-id').textContent = `Your Anonymous ID: ${userId.substring(0, 8)}...`;
-                        isAuthReady = true; // Auth is ready
-                        console.log("Authentication state changed: User logged in. UID:", userId);
-                        setupChatListener(); // Setup listener only when auth is ready
+                const studentName = document.getElementById('studentName').value;
+                const subject = document.getElementById('subject').value;
+                const teacherName = document.getElementById('teacherName').value;
+                const feedbackText = document.getElementById('feedbackText').value;
+
+                console.log("Feedback Submitted (Local Simulation):", {
+                    studentName: studentName || 'Anonymous',
+                    subject: subject,
+                    teacherName: teacherName,
+                    feedback: feedbackText,
+                    timestamp: new Date().toLocaleString(),
+                    userId: userId
+                });
+
+                feedbackForm.reset();
+                feedbackMessageDiv.textContent = 'Feedback submitted successfully!';
+                feedbackMessageDiv.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+                feedbackMessageDiv.classList.add('bg-green-100', 'text-green-800');
+                setTimeout(() => feedbackMessageDiv.classList.add('hidden'), 5000);
+            });
+
+            const chatInput = document.getElementById('chatInput');
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const chatMessagesDiv = document.getElementById('chatMessages');
+            const downloadChatBtn = document.getElementById('downloadChatBtn');
+            const uploadChatInput = document.getElementById('uploadChatInput');
+
+            function renderMessages() {
+                chatMessagesDiv.innerHTML = '';
+                if (chatMessages.length === 0) {
+                    chatMessagesDiv.innerHTML = '<p class="text-center text-gray-400">No messages yet. Start chatting!</p>';
+                    return;
+                }
+                chatMessages.forEach((data) => {
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('mb-2', 'p-3', 'rounded-lg', 'break-words');
+                    if (data.userId === userId) {
+                        messageElement.classList.add('bg-blue-100', 'ml-auto', 'text-right', 'rounded-br-none');
+                        messageElement.innerHTML = `<p class="font-semibold text-blue-800">You (Anonymous):</p><p>${data.message}</p>`;
                     } else {
-                        console.log("Authentication state changed: No user. Attempting sign-in...");
-                        if (initialAuthToken) {
-                            console.log("Signing in with custom token...");
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            console.log("Signing in anonymously...");
-                            await signInAnonymously(auth);
-                        }
+                        messageElement.classList.add('bg-gray-100', 'rounded-bl-none');
+                        // Display the full anonymous ID since it's not real-time
+                        messageElement.innerHTML = `<p class="font-semibold text-gray-800">Anonymous User (${data.userId}):</p><p>${data.message}</p>`;
                     }
-                }, (error) => {
-                    console.error("onAuthStateChanged error:", error);
-                    document.getElementById('current-user-id').textContent = `Auth Error: ${error.message}`;
+                    chatMessagesDiv.appendChild(messageElement);
                 });
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            }
 
-                const feedbackForm = document.getElementById('feedbackForm');
-                const feedbackMessageDiv = document.getElementById('feedbackMessage');
-                feedbackForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    if (!isAuthReady || !auth.currentUser) {
-                        feedbackMessageDiv.textContent = 'Authentication not complete. Please wait...';
-                        feedbackMessageDiv.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-red-100', 'text-red-800');
-                        feedbackMessageDiv.classList.add('bg-yellow-100', 'text-yellow-800');
-                        console.warn("Feedback submission blocked: Authentication not ready.");
-                        return;
-                    }
+            const sendMessage = () => {
+                const messageText = chatInput.value.trim();
+                if (messageText === '') return;
 
-                    const studentName = document.getElementById('studentName').value;
-                    const subject = document.getElementById('subject').value;
-                    const teacherName = document.getElementById('teacherName').value;
-                    const feedbackText = document.getElementById('feedbackText').value;
-
-                    try {
-                        await addDoc(feedbackCollection(auth.currentUser.uid), {
-                            studentName: studentName || 'Anonymous',
-                            subject: subject,
-                            teacherName: teacherName,
-                            feedback: feedbackText,
-                            timestamp: serverTimestamp(),
-                            userId: auth.currentUser.uid
-                        });
-                        feedbackForm.reset();
-                        feedbackMessageDiv.textContent = 'Feedback submitted successfully!';
-                        feedbackMessageDiv.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
-                        feedbackMessageDiv.classList.add('bg-green-100', 'text-green-800');
-                        setTimeout(() => feedbackMessageDiv.classList.add('hidden'), 5000);
-                        console.log("Feedback submitted successfully.");
-                    } catch (error) {
-                        console.error("Error adding feedback: ", error);
-                        feedbackMessageDiv.textContent = 'Error submitting feedback. Please try again.';
-                        feedbackMessageDiv.classList.remove('hidden', 'bg-green-100', 'text-green-800', 'bg-yellow-100', 'text-yellow-800');
-                        feedbackMessageDiv.classList.add('bg-red-100', 'text-red-800');
-                    }
-                });
-
-                const chatInput = document.getElementById('chatInput');
-                const sendMessageBtn = document.getElementById('sendMessageBtn');
-                const chatMessagesDiv = document.getElementById('chatMessages');
-
-                const sendMessage = async () => {
-                    const messageText = chatInput.value.trim();
-                    if (messageText === '') return;
-
-                    if (!isAuthReady || !auth.currentUser) {
-                         chatInput.value = 'Authentication not complete. Cannot send message.';
-                         console.warn("Chat message blocked: Authentication not ready.");
-                         return;
-                    }
-
-                    try {
-                        await addDoc(chatMessagesCollection(auth.currentUser.uid), {
-                            userId: userId,
-                            message: messageText,
-                            timestamp: serverTimestamp()
-                        });
-                        chatInput.value = '';
-                        console.log("Message sent.");
-                    } catch (error) {
-                        console.error("Error sending message: ", error);
-                    }
+                const newMessage = {
+                    userId: userId,
+                    message: messageText,
+                    timestamp: new Date().toISOString()
                 };
 
-                sendMessageBtn.addEventListener('click', sendMessage);
-                chatInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') {
-                        sendMessage();
-                    }
-                });
+                chatMessages.push(newMessage);
+                renderMessages();
+                chatInput.value = '';
+                console.log("Message sent (local only):", newMessage);
+            };
 
-                function setupChatListener() {
-                    if (!isAuthReady || !auth.currentUser) {
-                        console.warn("Attempted to setup chat listener before authentication was ready.");
-                        return;
-                    }
-                    console.log("Setting up chat listener...");
-                    const q = query(chatMessagesCollection(auth.currentUser.uid), orderBy('timestamp'));
-                    onSnapshot(q, (snapshot) => {
-                        console.log("New chat messages snapshot received.");
-                        chatMessagesDiv.innerHTML = '';
-                        snapshot.forEach((doc) => {
-                            const data = doc.data();
-                            const messageElement = document.createElement('div');
-                            messageElement.classList.add('mb-2', 'p-3', 'rounded-lg', 'break-words');
-                            if (data.userId === userId) {
-                                messageElement.classList.add('bg-blue-100', 'ml-auto', 'text-right', 'rounded-br-none');
-                                messageElement.innerHTML = `<p class="font-semibold text-blue-800">You (Anonymous):</p><p>${data.message}</p>`;
-                            } else {
-                                messageElement.classList.add('bg-gray-100', 'rounded-bl-none');
-                                messageElement.innerHTML = `<p class="font-semibold text-gray-800">Anonymous User (${data.userId.substring(0, 8)}...):</p><p>${data.message}</p>`;
-                            }
-                            chatMessagesDiv.appendChild(messageElement);
-                        });
-                        chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
-                    }, (error) => {
-                        console.error("Error listening to chat messages: ", error);
-                    });
+            sendMessageBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
                 }
+            });
 
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                document.getElementById('current-user-id').textContent = `Error: ${error.message}`;
-            }
+            // Download Chat History
+            downloadChatBtn.addEventListener('click', () => {
+                const dataStr = JSON.stringify(chatMessages, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'chat_history.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                console.log("Chat history downloaded.");
+            });
+
+            // Upload Chat History
+            uploadChatInput.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const uploadedData = JSON.parse(e.target.result);
+                        if (Array.isArray(uploadedData)) {
+                            // Merge or replace existing messages. For simplicity, we'll replace.
+                            // In a real scenario, you'd want robust merging logic to avoid duplicates.
+                            chatMessages = uploadedData.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                            renderMessages();
+                            console.log("Chat history uploaded and displayed.");
+                        } else {
+                            console.error("Uploaded file is not a valid JSON array.");
+                            alert("Error: Uploaded file is not a valid chat history (expected a JSON array).");
+                        }
+                    } catch (error) {
+                        console.error("Error parsing uploaded file:", error);
+                        alert("Error reading or parsing the uploaded file.");
+                    }
+                };
+                reader.readAsText(file);
+                // Clear the input value so the same file can be selected again
+                event.target.value = ''; 
+            });
+
+            renderMessages();
         });
     </script>
     <!-- Chosen Palette: Calm Harmony (Light neutrals for background, soft blue/green for accents) -->
-    <!-- Application Structure Plan: The application is structured as a single-page layout divided into two primary, clearly distinct sections: a "Student Feedback Form" and a "Teacher Chat" area. This design was chosen to group related functionalities logically, allowing users to quickly access either task without navigating to separate pages. The form is presented first as a primary input mechanism, followed by the chat for real-time interaction. This linear flow simplifies the user journey for two distinct but related activities within a single browser session. -->
+    <!-- Application Structure Plan: The application is structured as a single-page layout with two distinct sections: "Student Feedback Form" and "Anonymous Session Chat." This design separates the functionalities logically. The chat section now explicitly highlights its non-realtime nature for external sharing and includes controls for manually downloading and uploading chat history files. This structure supports the user's request for file-based sharing by providing the necessary manual interaction points. -->
     <!-- Visualization & Content Choices:
-        - Report Info: Student Feedback Data. Goal: Collect structured input. Viz/Presentation: HTML form elements (text inputs, textarea). Interaction: Standard form submission with local validation and success messages (data will be persisted via Firebase). Justification: A traditional form is the most efficient and universally understood method for collecting structured feedback. Library: Vanilla JS for form handling, Firebase Firestore for data persistence.
-        - Report Info: Teacher Chat Communication. Goal: Enable real-time, text-based conversation across multiple users. Viz/Presentation: A scrollable message display area and a text input for sending messages. Interaction: Messages are sent by typing and pressing Enter or clicking a send button, and new messages appear automatically in real-time for all connected users. Justification: Provides a familiar and intuitive chat experience, with messages persisted and synchronized through Firebase Firestore. Library: Vanilla JS for UI updates, Firebase Firestore for real-time data synchronization, Firebase Auth for anonymous user identification.
-        - Report Info: User identification. Goal: Inform the user of their unique anonymous identifier for chat. Viz/Presentation: Plain text display of a truncated anonymous ID. Interaction: None, informational. Justification: Essential for distinguishing 'your' messages from 'other anonymous users' in the real-time chat. Library: Vanilla JS.
+        - Report Info: Student Feedback Data. Goal: Collect structured input. Viz/Presentation: HTML form elements (text inputs, textarea). Interaction: Standard form submission with local validation and success messages (no data persistence). Justification: A traditional form is the most efficient and universally understood method for collecting structured feedback. Library: Vanilla JS for form handling.
+        - Report Info: Anonymous Session Chat. Goal: Enable simple text-based conversation within a single browser session, with manual file export/import. Viz/Presentation: Scrollable message display, text input, and new buttons for download/upload. Interaction: Messages are sent by typing and pressing Enter/Send. Download button creates a JSON file. Upload button reads a JSON file to load history. Justification: This fulfills the 'store file and share' requirement, acknowledging the non-realtime, manual nature. Library: Vanilla JS for UI updates, message management in memory, and file operations (Blob, FileReader).
+        - Report Info: User identification. Goal: Inform the user of their unique anonymous identifier for chat within the session. Viz/Presentation: Plain text display of the full anonymous ID. Interaction: None, informational. Justification: Essential for distinguishing 'your' messages from 'other anonymous users' in the manual chat. Library: Vanilla JS.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa; /* Light neutral background */
-            color: #374151; /* Dark gray text */
+            background-color: #f8f9fa;
+            color: #374151;
         }
         input[type="text"],
         textarea {
-            border: 1px solid #d1d5db; /* Light gray border */
+            border: 1px solid #d1d5db;
             border-radius: 0.5rem;
             padding: 0.75rem 1rem;
             width: 100%;
@@ -202,10 +166,10 @@
         input[type="text"]:focus,
         textarea:focus {
             outline: none;
-            border-color: #60a5fa; /* Soft blue focus */
+            border-color: #60a5fa;
         }
         button {
-            background-color: #3b82f6; /* Medium blue */
+            background-color: #3b82f6;
             color: white;
             padding: 0.75rem 1.5rem;
             border-radius: 0.5rem;
@@ -213,7 +177,7 @@
             transition: background-color 0.2s;
         }
         button:hover {
-            background-color: #2563eb; /* Darker blue on hover */
+            background-color: #2563eb;
         }
         .chat-messages {
             height: 300px;
@@ -223,6 +187,19 @@
             padding: 1rem;
             border-radius: 0.5rem;
         }
+        .upload-button-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        .upload-button-wrapper input[type=file] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="text-gray-800">
@@ -230,7 +207,7 @@
     <div class="container mx-auto p-4 md:p-8 max-w-4xl">
         <header class="text-center mb-8 md:mb-12">
             <h1 class="text-4xl md:text-5xl font-bold text-gray-800">Student Hub: Feedback & Chat</h1>
-            <p class="mt-4 text-lg text-gray-600">Provide feedback or connect with teachers in real-time.</p>
+            <p class="mt-4 text-lg text-gray-600">Provide feedback or connect with others (manual sharing).</p>
         </header>
 
         <main class="grid grid-cols-1 gap-12">
@@ -260,15 +237,22 @@
             </section>
 
             <section id="teacher-chat-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
-                <h2 class="text-2xl font-bold mb-6 text-center">Anonymous Real-time Chat</h2>
-                <p class="text-gray-600 mb-6 text-center">Chat anonymously with other users. Messages will be visible to everyone and persist across sessions.</p>
-                <div class="mb-4 text-sm text-gray-500 font-medium" id="current-user-id">Signing in anonymously...</div>
+                <h2 class="text-2xl font-bold mb-6 text-center">Anonymous Session Chat</h2>
+                <p class="text-gray-600 mb-6 text-center">This chat is local to your browser session. To share messages, use the download/upload options below. **Messages will not be saved automatically or shared in real-time across devices.**</p>
+                <div class="mb-4 text-sm text-gray-500 font-medium" id="current-user-id">Generating anonymous ID...</div>
                 <div id="chatMessages" class="chat-messages mb-4 rounded-lg flex flex-col">
                     <p class="text-center text-gray-400">Loading messages...</p>
                 </div>
-                <div class="flex space-x-3">
+                <div class="flex space-x-3 mb-4">
                     <input type="text" id="chatInput" placeholder="Type your message..." class="flex-grow rounded-xl">
                     <button id="sendMessageBtn" class="flex-shrink-0">Send</button>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                    <button id="downloadChatBtn" class="w-full sm:w-auto">Download Chat History</button>
+                    <div class="upload-button-wrapper w-full sm:w-auto">
+                        <button class="w-full">Upload Chat History</button>
+                        <input type="file" id="uploadChatInput" accept=".json">
+                    </div>
                 </div>
             </section>
         </main>
