@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Feedback & Teacher Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        let userId; // Will be a randomly generated ID for anonymous use
+        let chatMessages = []; // Local storage for chat messages
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Generate a simple anonymous user ID for this session
+            userId = 'anon_' + Math.random().toString(36).substring(2, 10);
+            document.getElementById('current-user-id').textContent = `Your Anonymous ID: ${userId.substring(0, 8)}...`;
+            console.log("Anonymous User ID generated:", userId);
+
+            // --- Feedback Form Logic (Local Simulation) ---
+            const feedbackForm = document.getElementById('feedbackForm');
+            const feedbackMessageDiv = document.getElementById('feedbackMessage');
+            feedbackForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const studentName = document.getElementById('studentName').value;
+                const subject = document.getElementById('subject').value;
+                const teacherName = document.getElementById('teacherName').value;
+                const feedbackText = document.getElementById('feedbackText').value;
+
+                // In a real application, this data would be sent to a server/database.
+                // Here, we just simulate success.
+                console.log("Feedback Submitted (Local Simulation):", {
+                    studentName: studentName || 'Anonymous',
+                    subject: subject,
+                    teacherName: teacherName,
+                    feedback: feedbackText,
+                    timestamp: new Date().toLocaleString(),
+                    userId: userId
+                });
+
+                feedbackForm.reset();
+                feedbackMessageDiv.textContent = 'Feedback submitted successfully!';
+                feedbackMessageDiv.classList.remove('hidden', 'bg-yellow-100', 'text-yellow-800', 'bg-red-100', 'text-red-800');
+                feedbackMessageDiv.classList.add('bg-green-100', 'text-green-800');
+                setTimeout(() => feedbackMessageDiv.classList.add('hidden'), 5000);
+            });
+
+            // --- Chat Application Logic (Local Simulation) ---
+            const chatInput = document.getElementById('chatInput');
+            const sendMessageBtn = document.getElementById('sendMessageBtn');
+            const chatMessagesDiv = document.getElementById('chatMessages');
+
+            // Function to render messages to the UI
+            function renderMessages() {
+                chatMessagesDiv.innerHTML = ''; // Clear existing messages
+                chatMessages.forEach((data) => {
+                    const messageElement = document.createElement('div');
+                    messageElement.classList.add('mb-2', 'p-3', 'rounded-lg', 'break-words');
+                    if (data.userId === userId) {
+                        messageElement.classList.add('bg-blue-100', 'ml-auto', 'text-right', 'rounded-br-none');
+                        messageElement.innerHTML = `<p class="font-semibold text-blue-800">You (Anonymous):</p><p>${data.message}</p>`;
+                    } else {
+                        messageElement.classList.add('bg-gray-100', 'rounded-bl-none');
+                        messageElement.innerHTML = `<p class="font-semibold text-gray-800">Anonymous User (${data.userId.substring(0, 8)}...):</p><p>${data.message}</p>`;
+                    }
+                    chatMessagesDiv.appendChild(messageElement);
+                });
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Scroll to bottom
+            }
+
+            const sendMessage = () => {
+                const messageText = chatInput.value.trim();
+                if (messageText === '') return;
+
+                const newMessage = {
+                    userId: userId,
+                    message: messageText,
+                    timestamp: new Date().toISOString() // ISO timestamp for consistent sorting
+                };
+
+                chatMessages.push(newMessage); // Add new message to local array
+                renderMessages(); // Re-render all messages
+                chatInput.value = ''; // Clear input
+                console.log("Message sent (Local Simulation):", newMessage);
+            };
+
+            sendMessageBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+
+            // Initial render of messages (will be empty on first load)
+            renderMessages();
+            chatMessagesDiv.innerHTML = '<p class="text-center text-gray-400">Start chatting!</p>';
+        });
+    </script>
+    <!-- Chosen Palette: Calm Harmony (Light neutrals for background, soft blue/green for accents) -->
+    <!-- Application Structure Plan: The application is structured as a single-page layout divided into two primary, clearly distinct sections: a "Student Feedback Form" and a "Teacher Chat" area. This design was chosen to group related functionalities logically, allowing users to quickly access either task without navigating to separate pages. The form is presented first as a primary input mechanism, followed by the chat for local, simulated interaction. This linear flow simplifies the user journey for two distinct but related activities within a single browser session. -->
+    <!-- Visualization & Content Choices:
+        - Report Info: Student Feedback Data. Goal: Collect structured input. Viz/Presentation: HTML form elements (text inputs, textarea). Interaction: Standard form submission with local validation and success messages (no data persistence). Justification: A traditional form is the most efficient and universally understood method for collecting structured feedback. Library: Vanilla JS for form handling.
+        - Report Info: Teacher Chat Communication. Goal: Enable simple text-based conversation within the browser. Viz/Presentation: A scrollable message display area and a text input for sending messages. Interaction: Messages are sent by typing and pressing Enter or clicking a send button, and new messages appear automatically in the local session. Justification: Provides a familiar and intuitive chat experience, emphasizing client-side simplicity without external dependencies. Library: Vanilla JS for UI updates and message management in memory.
+        - Report Info: User identification. Goal: Inform the user of their unique anonymous identifier for chat within the session. Viz/Presentation: Plain text display of a truncated anonymous ID. Interaction: None, informational. Justification: Essential for distinguishing 'your' messages from 'other anonymous users' within the same local simulation. Library: Vanilla JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* Light neutral background */
+            color: #374151; /* Dark gray text */
+        }
+        input[type="text"],
+        textarea {
+            border: 1px solid #d1d5db; /* Light gray border */
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #60a5fa; /* Soft blue focus */
+        }
+        button {
+            background-color: #3b82f6; /* Medium blue */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2563eb; /* Darker blue on hover */
+        }
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            background-color: #ffffff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-800">Student Hub: Feedback & Chat</h1>
+            <p class="mt-4 text-lg text-gray-600">Provide feedback or connect with teachers in real-time.</p>
+        </header>
+
+        <main class="grid grid-cols-1 gap-12">
+            <section id="feedback-form-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
+                <h2 class="text-2xl font-bold mb-6 text-center">Student Feedback Form</h2>
+                <p class="text-gray-600 mb-6 text-center">Use this form to provide anonymous or named feedback on your subjects and teachers. Your input helps us improve!</p>
+                <form id="feedbackForm" class="space-y-6">
+                    <div>
+                        <label for="studentName" class="block text-sm font-medium text-gray-700 mb-1">Your Name (Optional)</label>
+                        <input type="text" id="studentName" placeholder="e.g., Jane Doe" class="w-full">
+                    </div>
+                    <div>
+                        <label for="subject" class="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                        <input type="text" id="subject" placeholder="e.g., Chemistry 101" required class="w-full">
+                    </div>
+                    <div>
+                        <label for="teacherName" class="block text-sm font-medium text-gray-700 mb-1">Teacher's Name</label>
+                        <input type="text" id="teacherName" placeholder="e.g., Dr. Smith" required class="w-full">
+                    </div>
+                    <div>
+                        <label for="feedbackText" class="block text-sm font-medium text-gray-700 mb-1">Your Feedback</label>
+                        <textarea id="feedbackText" rows="5" placeholder="Share your thoughts..." required class="w-full"></textarea>
+                    </div>
+                    <button type="submit" class="w-full justify-center flex items-center">Submit Feedback</button>
+                    <div id="feedbackMessage" class="hidden mt-4 p-3 rounded-md text-sm font-medium text-center"></div>
+                </form>
+            </section>
+
+            <section id="teacher-chat-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm">
+                <h2 class="text-2xl font-bold mb-6 text-center">Anonymous Session Chat</h2>
+                <p class="text-gray-600 mb-6 text-center">Chat anonymously within this browser session. Messages will not be saved or shared across devices.</p>
+                <div class="mb-4 text-sm text-gray-500 font-medium" id="current-user-id">Generating anonymous ID...</div>
+                <div id="chatMessages" class="chat-messages mb-4 rounded-lg flex flex-col">
+                    <p class="text-center text-gray-400">Loading messages...</p>
+                </div>
+                <div class="flex space-x-3">
+                    <input type="text" id="chatInput" placeholder="Type your message..." class="flex-grow rounded-xl">
+                    <button id="sendMessageBtn" class="flex-shrink-0">Send</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+</body>
+</html>
